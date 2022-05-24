@@ -71,6 +71,17 @@ mblock_t* heap_alloc(mheap_t* heap, unsigned int _size)
     return block;
 }
 
+void heap_free(mblock_t* block)
+{
+    block->size &= ~MBLOCK_ALLOCATED;
+    mblock_t* prev = block->prev;
+    mblock_t* next = (mblock_t*)((uint8_t*)block + block->size);
+    if (!(prev->size & MBLOCK_ALLOCATED))
+        heap_join(block, prev);
+    if (!(next->size & MBLOCK_ALLOCATED))
+        heap_join(block, next);
+}
+
 
 static void heap_debug(mheap_t* heap)
 {
@@ -84,7 +95,7 @@ static void heap_debug(mheap_t* heap)
     }
 }
 
-static uint8_t internal_heap[4096] = {0};
+static uint8_t internal_heap[4096];
 
 int main()
 {
@@ -92,6 +103,11 @@ int main()
     heap_init(&heap, internal_heap, sizeof(internal_heap));
     
     printf("heap_alloc\t%p\n", heap_alloc(&heap, 8));
+    printf("heap_alloc\t%p\n", heap_alloc(&heap, 8));
+    mblock_t* m3 = heap_alloc(&heap, 12);
+    printf("heap_alloc\t%p\n", m3);
+    printf("heap_alloc\t%p\n", heap_alloc(&heap, 8));
+    heap_free(m3);
     printf("heap_alloc\t%p\n", heap_alloc(&heap, 8));
 
     heap_debug(&heap);
