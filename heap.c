@@ -15,6 +15,7 @@ typedef struct {
 
 #define MBLOCK_ALLOCATED    (1<<0)
 #define MBLOCK_SIZE(size)   ((size) & ~MBLOCK_ALLOCATED)
+#define MBLOCK_ALIGN        3
 
 void heap_init(mheap_t* heap, void* start, unsigned int size)
 {
@@ -50,8 +51,49 @@ void heap_join(mblock_t* block, mblock_t* other)
     }
 }
 
+mblock_t* heap_alloc(mheap_t* heap, unsigned int _size)
+{
+    unsigned int size = cu_round2_up(_size + sizeof(mblock_t), MBLOCK_ALIGN);
+    mblock_t* block = (mblock_t*)((uint8_t*)heap->start);
+    mblock_t* end = (mblock_t*)((uint8_t*)heap->start + heap->size);
+    while ((block->size & MBLOCK_ALLOCATED) || MBLOCK_SIZE(block->size) < size)
+    {
+        block = (mblock_t*)((uint8_t*)block + MBLOCK_SIZE(block->size));
+        if (block >= end) return NULL;
+    }
+
+    if (block->size > size)
+    {
+        heap_split(block, size);
+    }
+
+    block->size |= MBLOCK_ALLOCATED;
+    return block;
+}
+
+
+static void heap_debug(mheap_t* heap)
+{
+    mblock_t* block = (mblock_t*)((uint8_t*)heap->start);
+    mblock_t* end = (mblock_t*)((uint8_t*)heap->start + heap->size);
+    printf("heap\t%p\t%p\n", block, end);
+    while (block < end && MBLOCK_SIZE(block->size))
+    {
+        printf("block\t%p\t%u\n", block, block->size);
+        block = (mblock_t*)((uint8_t*)block + MBLOCK_SIZE(block->size));
+    }
+}
+
+static uint8_t internal_heap[4096] = {0};
+
 int main()
 {
-    printf("mblock_t\t%u\n", sizeof(mblock_t));
+    mheap_t heap;
+    heap_init(&heap, internal_heap, sizeof(internal_heap));
+    
+    printf("heap_alloc\t%p\n", heap_alloc(&heap, 8));
+    printf("heap_alloc\t%p\n", heap_alloc(&heap, 8));
+
+    heap_debug(&heap);
     return 0;
 }
