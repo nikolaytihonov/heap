@@ -14,6 +14,7 @@ typedef struct {
 } mblock_t;
 
 #define MBLOCK_ALLOCATED    (1<<0)
+#define MBLOCK_SIZE(size)   ((size) & ~MBLOCK_ALLOCATED)
 
 void heap_init(mheap_t* heap, void* start, unsigned int size)
 {
@@ -25,7 +26,13 @@ void heap_init(mheap_t* heap, void* start, unsigned int size)
     block->size = size;
 }
 
-
+void heap_split(mblock_t* block, unsigned int size)
+{
+    mblock_t* split = (mblock_t*)((uint8_t*)block + size);
+    split->prev = block;
+    split->size = block->size - size;
+    block->size = size;
+}
 
 int main()
 {
