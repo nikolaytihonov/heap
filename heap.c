@@ -36,11 +36,17 @@ void heap_split(mblock_t* block, unsigned int size)
 
 void heap_join(mblock_t* block, mblock_t* other)
 {
-    if (other > block)
+    if (block < other)
     {
         mblock_t* next = (mblock_t*)((uint8_t*)other + other->size);
         next->prev = block;
         block->size += other->size;
+    }
+    else if (block > other)
+    {
+        mblock_t* next = (mblock_t*)((uint8_t*)block + block->size);
+        next->prev = other;
+        other->size += block->size;
     }
 }
 
