@@ -34,6 +34,16 @@ void heap_split(mblock_t* block, unsigned int size)
     block->size = size;
 }
 
+void heap_join(mblock_t* block, mblock_t* other)
+{
+    if (other > block)
+    {
+        mblock_t* next = (mblock_t*)((uint8_t*)other + other->size);
+        next->prev = block;
+        block->size += other->size;
+    }
+}
+
 int main()
 {
     printf("mblock_t\t%u\n", sizeof(mblock_t));
