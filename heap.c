@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <string.h>
 
 #define cu_round2_up(val,bit) (((val>>bit) + !!(val&((1<<bit)-1)) ) << bit)
 
@@ -82,6 +83,31 @@ void heap_free(mblock_t* block)
         heap_join(block, next);
 }
 
+mblock_t* heap_realloc(mheap_t* heap, mblock_t* block, unsigned int _size)
+{
+    block->size &= ~MBLOCK_ALLOCATED;
+    unsigned int size = cu_round2_up(_size, MBLOCK_ALIGN);
+    mblock_t* next = (mblock_t*)((uint8_t*)block + block->size);
+    mblock_t* new;
+    if (!(next->size & MBLOCK_ALLOCATED) && next->size >= size)
+    {
+        new = block;
+        heap_join(new, next);
+        heap_split(new, size);
+        new->size |= MBLOCK_ALLOCATED;
+    }
+    else
+    {
+        heap_free(block);
+        new = heap_alloc(heap, size);
+        if (new)
+        {
+            memcpy((uint8_t*)new + sizeof(mblock_t),
+                (uint8_t*)block + sizeof(mblock_t), size - sizeof(mblock_t));
+        }
+    }
+    return new;
+}
 
 static void heap_debug(mheap_t* heap)
 {
@@ -108,7 +134,14 @@ int main()
     printf("heap_alloc\t%p\n", m3);
     printf("heap_alloc\t%p\n", heap_alloc(&heap, 8));
     heap_free(m3);
-    printf("heap_alloc\t%p\n", heap_alloc(&heap, 8));
+    m3 = heap_alloc(&heap, 8);
+    printf("heap_alloc\t%p\n", m3);
+    m3 = heap_realloc(&heap, m3, 12);
+    printf("heap_realloc\t%p\n", m3);
+    m3 = heap_realloc(&heap, m3, 8);
+    printf("heap_realloc\t%p\n", m3);
+    m3 = heap_realloc(&heap, m3, 32);
+    printf("heap_realloc\t%p\n", m3);
 
     heap_debug(&heap);
     return 0;
